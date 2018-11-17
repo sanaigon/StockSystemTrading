@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+from urllib.request import urlopen
 
 import pandas as pd
+import urllib
+from bs4 import BeautifulSoup
 
-from repository.PostgresStockData import connect_db
+from StockDataWriter.repository.PostgresStockData import PostgresStockData
 
 
 def get_stock_codes():
@@ -45,11 +48,11 @@ def reformat_code_dataframe(code_df):
     return code_df
 
 
-def new_stock_dataframe(url):
+def new_stock_dataframe(url, max_page_num):
     # 일자 데이터를 담을 df라는 dataframe 정의
     df = pd.DataFrame()
 
-    for page in range(1, 20):
+    for page in range(1, max_page_num):
         page_url = '{url}&page={page}'.format(url=url, page=page)
         df = df.append(pd.read_html(page_url, header=0)[0], ignore_index=True)
 
@@ -76,12 +79,21 @@ def new_stock_dataframe(url):
 
     return df
 
+def max_page_num(url):
+    html = urlopen(url)
+    source = BeautifulSoup(html.read(), "html.parser")
+    max_page = source.find_all("table", align="center")
+    mp = max_page[0].find_all("td", {"class": "pgRR"})
+    mp_num = int(mp[0].a.get('href')[-3:])
+    return mp_num + 1
+
 
 if __name__ == "__main__":
     item_name = '삼성전자'
 
-
-    print(connect_db())
+    pg = PostgresStockData()
+    pg.connect_db("localhost", "postgres", "jkpark")
+    print(pg.test_function())
 
     code_df = get_stock_codes()
 
@@ -89,4 +101,6 @@ if __name__ == "__main__":
 
     url = get_url(item_name, code_df)
 
-    print(new_stock_dataframe(url).head())
+    max_page_num = max_page_num(url)
+
+    print(new_stock_dataframe(url, max_page_num).head())

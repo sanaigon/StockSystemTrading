@@ -1,0 +1,29 @@
+
+
+CREATE TABLE public.daily_stock_price_item_code(
+    code character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+);
+
+CREATE TABLE public.daily_stock_price
+(
+    code character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    date date NOT NULL,
+    open integer NOT NULL,
+    high integer NOT NULL,
+    low integer NOT NULL,
+    close integer NOT NULL,
+    diff integer NOT NULL,
+    volume bigint NOT NULL,
+    CONSTRAINT daily_stock_price_item_code_fkey FOREIGN KEY (code)
+        REFERENCES public.stock_item_code (code) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+WITH ( OIDS = FALSE )
+TABLESPACE pg_default;
+ALTER TABLE public.daily_stock_price
+    OWNER to postgres;
+COMMENT ON TABLE public.daily_stock_price
+    IS '종목/일자별 주가데이터';
