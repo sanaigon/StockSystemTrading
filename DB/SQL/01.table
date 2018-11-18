@@ -3,6 +3,7 @@
 CREATE TABLE public.daily_stock_price_item_code(
     code character varying(20) COLLATE pg_catalog."default" NOT NULL,
     name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT PK_NAME primary key(code)
 );
 
 CREATE TABLE public.daily_stock_price

@@ -2,9 +2,7 @@
 from urllib.request import urlopen
 
 import pandas as pd
-import urllib
 from bs4 import BeautifulSoup
-
 from StockDataWriter.repository.PostgresStockData import PostgresStockData
 
 
@@ -49,6 +47,14 @@ def reformat_code_dataframe(code_df):
 
 
 def new_stock_dataframe(url, max_page_num):
+    '''
+    url로 부터 종목정보를 담은 dataframe을 만든다.
+    dataframe으로 담은 후 날짜별로 오름차순 정렬한다.
+
+    :param url: 종목정보가 담긴 url
+    :param max_page_num: max_page_num 정보
+    :return: 종목정보가 담긴 dataframe
+    '''
     # 일자 데이터를 담을 df라는 dataframe 정의
     df = pd.DataFrame()
 
@@ -79,28 +85,51 @@ def new_stock_dataframe(url, max_page_num):
 
     return df
 
+
 def max_page_num(url):
+    """
+    각 url의 max page를 가져오는 함수
+
+    :param url: 시세 페이지가 표시된 url
+    :return: max_page_num
+    """
     html = urlopen(url)
     source = BeautifulSoup(html.read(), "html.parser")
     max_page = source.find_all("table", align="center")
     mp = max_page[0].find_all("td", {"class": "pgRR"})
-    mp_num = int(mp[0].a.get('href')[-3:])
+    mp_num = int(mp[0].a.get('href').split('&')[1].split('=')[1])
     return mp_num + 1
 
 
 if __name__ == "__main__":
-    item_name = '삼성전자'
-
     pg = PostgresStockData()
     pg.connect_db("localhost", "postgres", "jkpark")
-    print(pg.test_function())
 
     code_df = get_stock_codes()
 
+    ## 회사명과 종목코드만 dataframe으로 만든다
     code_df = reformat_code_dataframe(code_df)
 
-    url = get_url(item_name, code_df)
+    # (종목코드, 종목정보 url)을 담을 리스트
+    stock_info_list = []
 
-    max_page_num = max_page_num(url)
+    # 종목코드를 이용해 데이터를 가져올 url을 지정한다.
+    for row in code_df.iterrows():
+        item_name = row[1]['name']
+        stock_info_list.append((row[1]['code'], get_url(item_name, code_df)))
 
-    print(new_stock_dataframe(url, max_page_num).head())
+    for stock_info in stock_info_list:
+        code = stock_info[0]
+        url = stock_info[1]
+        max_num = max_page_num()
+        print("insert data that be got from: {0}, max_num={1}".format(url, max_num))
+        # url에서 부터 종목별 데이터가 담긴 dataframe을 얻은 후 db에 저장한다
+        for _, row in new_stock_dataframe(url, max_num).iterrows():
+            pg.save(code,
+                    row['date'],
+                    str(row['open']),
+                    str(row['high']),
+                    str(row['low']),
+                    str(row['close']),
+                    str(row['diff']),
+                    str(row['volume']))
